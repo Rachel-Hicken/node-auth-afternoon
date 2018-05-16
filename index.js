@@ -3,6 +3,7 @@ const session = require('express-session');
 require('dotenv').config();
 const passport = require('passport');
 const Auth0Strategy = require('passport-auth0');
+const students = require('./students.json')
 
 const {
     SERVER_PORT,
@@ -28,18 +29,39 @@ passport.use(new Auth0Strategy({
     clientSecret: CLIENT_SECRET,
     callbackURL: CALLBACK_URL,
     scope: 'openid email profile'
-},function(accessToken, refreshToken, extraParams, profile, done){
+}, function (accessToken, refreshToken, extraParams, profile, done) {
     console.log(profile)
     done(null, profile);
 }))
 
-passport.serializeUser( (user, done) => {
+passport.serializeUser((user, done) => {
     done(null, { clientID: user.id, email: user._json.email, name: user._json.name });
-  });
+});
 
-passport.deserializeUser(function(profile, done){
+passport.deserializeUser(function (profile, done) {
     done(null, profile);
 })
 
+app.get('/login',
+    passport.authenticate('auth0',
+        {
+            successRedirect: '/students',
+            failureRedirect: '/login',
+            connection: 'github'
+        }
+    )
+);
 
-app.listen( SERVER_PORT, () => { console.log(`Server listening on port ${SERVER_PORT}`); } );
+function authenticated(req, res, next) {
+    if( req.user ) {
+      next()
+    } else {
+      res.sendStatus(401)
+    }
+  }
+
+app.get('/students', authenticated, (req, res, next) => {
+    res.status(200).send(students)
+});
+
+app.listen(SERVER_PORT, () => { console.log(`Server listening on port ${SERVER_PORT}`); });
